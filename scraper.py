@@ -1,4 +1,4 @@
-import sqlite3, time, math, re, os, time
+import sqlite3, time, math, re, os, time, util
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
@@ -93,8 +93,14 @@ global_tag_ignore_list = taglist + [
 ]
 global_tag_block_list = ["nsfw", "not emoji", "not an emoji"]
 
-with open("bloglist.txt") as file:
-    bloglist = [blog.removesuffix("\n") for blog in file.readlines()]
+
+conn = sqlite3.connect("posts.sqlite3")
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM blogs")
+bloglist: list[list[str]] = []
+for item in cursor.fetchall():
+    bloglist.append(list(item)) # cast from tuple to list
+conn.close()
 
 
 def remove_duplicates(thing):
@@ -137,16 +143,19 @@ def check_rate_limit(response: dict[str], headers: dict[str]):
 
 
 def get_posts_from_blog(
-    blog: str,
+    blog: list[str],
     tag: str,
     filter: bool = True,
     current_posts: list[dict] | None = None,
     repeated_posts_threshold: int = 5,
 ) -> list[dict]:
+    
+    blog_name = blog[0]
+    blog_uuid = blog[1]
 
-    response, headers = client.posts(blog, tag=tag)  # get posts
+    response, headers = client.posts(blog_uuid, tag=tag)  # get posts
     if check_rate_limit(response, headers):  # check if we hit the rate limit
-        response, headers = client.posts(blog, tag=tag)  # do it again if you hit the rate limit the first time
+        response, headers = client.posts(blog_uuid, tag=tag)  # do it again if you hit the rate limit the first time
 
     if response["meta"]["status"] == 404:  # if the blog doesn't exist
         print("blog not found; skipping blog")
@@ -157,12 +166,42 @@ def get_posts_from_blog(
     data = response["response"]  # get the data from the response
     new_data = []  # list for new format of the data
 
+
+
     if data["total_posts"] > 0:  # make sure there's any posts to begin with
         consecutive_repeated_posts = 0  # log consecutive repeated posts
         offset_range = math.ceil(data["total_posts"] / 20)  # figure out how many pages there are
+        
+        
+        
+        blog_name_from_data = data["blog"]["name"]
+        if blog_name != blog_name_from_data:  # if the stored blog name is different from the received blog name
+            conn = sqlite3.connect("posts.sqlite3")
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT * FROM blogs WHERE name = ?", (blog_name,))  # check to see if the old name is still in the blog list
+            if cursor.fetchall():  # if it is
+                cursor.execute("UPDATE blogs SET name = ? WHERE uuid = ?", (blog_name_from_data, blog_uuid))  # replace it
+                print(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})")
+                with open("warnings.txt", "a", encoding="utf-8") as file:
+                    file.write(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})\n")
+                    # write to warnings to check later
+                    # so i can replace already posted things' tags
+                    
+            cursor.execute("SELECT * FROM posts WHERE blog = ?", (blog_name,))  # check to see if the old name is still in the post database
+            if cursor.fetchall():  # if it is
+                util.blog_name_change(blog_name, blog_name_from_data)  # change posts in database to reflect new name
+            
+            conn.commit()
+            conn.close()
+            
+            blog_name = blog_name_from_data
+            blog = [blog_name, blog_uuid]
+
+
 
         # progress bar
-        with alive_bar(data["total_posts"], title=f"{blog} (#{tag})") as bar:
+        with alive_bar(data["total_posts"], title=f"{blog_name} (#{tag})") as bar:
 
             for i in range(offset_range):  # for every page
 
@@ -175,9 +214,9 @@ def get_posts_from_blog(
 
                 # get the next page of posts (unless this is the first iteration)
                 if i != 0:
-                    response, headers = client.posts(blog, tag=tag, offset=i * 20)  # get the next page
+                    response, headers = client.posts(blog_uuid, tag=tag, offset=i * 20)  # get the next page
                     if check_rate_limit(response, headers):  # check to see if we hit the rate limit
-                        response, headers = client.posts(blog, tag=tag, offset=i * 20)  # do it again if you hit the rate limit the first time
+                        response, headers = client.posts(blog_uuid, tag=tag, offset=i * 20)  # do it again if you hit the rate limit the first time
 
                     data = response["response"]  # get the data from the response
 
@@ -199,7 +238,7 @@ def get_posts_from_blog(
                     if soup.find_all('button[aria-label="Keep reading"]'):
                         with open("warnings.txt", "a", encoding="utf-8") as file:
                             # write to warnings file to check manually later
-                            file.write(f"read more: {blog}/{post['id']}\n")
+                            file.write(f"read more: {blog_name}/{post['id']}\n")
                             # TODO: make a version of this that works
                             # search for [[MORE]] in posts[0]trail[0][content_raw] or posts[0]reblog[comment], i think
                             # alternatively go through things the blog has already posted and search for a.tmblr-truncated-link.read_more
@@ -224,7 +263,7 @@ def get_posts_from_blog(
 
                         new_data.append(
                             {
-                                "blog": blog,
+                                "blog": [blog_name, blog_uuid],
                                 "id": post["id"],
                                 "tags": post["tags"],
                                 "reblog_key": post["reblog_key"],
@@ -237,44 +276,45 @@ def get_posts_from_blog(
 
     else:
         # if there's no posts
-        print(f"{blog} (#{tag}) | no posts")
+        print(f"{blog_name} (#{tag}) | no posts")
         return "no posts"
     
     if new_data == []:
         # if there's no posts with images
-        print(f"{blog} (#{tag}) | no posts with images")
+        print(f"{blog_name} (#{tag}) | no posts with images")
         return "no posts with images"
 
     return new_data
 
 
 def get_posts_from_all_blogs(
-    blogs: list,
+    blogs: list[list[str]],  # [[blog_name, blog_uuid]]
     tags_to_search: list,
     skip: int = 0,  # skip the first n blogs in bloglist
     filter: bool = True,
 ):
     conn = sqlite3.connect("posts.sqlite3")
+    cursor = conn.cursor()
 
     with open("output.py", "r", encoding="utf-8") as file:
         file_text = eval(file.read())
 
     posts = ""
 
-    for blog in blogs[skip:]:
-        print(blog)
+    for blog_name, blog_uuid in blogs[skip:]:
+        print(blog_name)
         for tag in tags_to_search:
-            posts = get_posts_from_blog(blog, tag, filter=filter, current_posts=file_text)
+            posts = get_posts_from_blog([blog_name, blog_uuid], tag, filter=filter, current_posts=file_text)
 
             if posts == "blog not found":
-                break  # cancel if this blog doesn't exist
+                break  # stop going through tags if this blog can't be found
 
             if posts in ["already have all posts", "no posts", "no posts with images"]:
-                print(posts)
+                print(posts)  # (this just prints whichever of those ^ three messages it was)
                 continue
 
             if not posts:
-                print("[DEBUG] no posts?!?!?!")
+                print("[DEBUG] no posts?!?!?!")  # pretty sure this is supposed to be impossible and that's why i did this
                 print(type(posts))
                 print(posts)
                 exit()
@@ -283,22 +323,22 @@ def get_posts_from_all_blogs(
                 if any(x in global_tag_block_list for x in post["tags"]):
                     continue  # skip if any blocked tags
 
-                blog = post["blog"]
-                post_id = post["id"]
-                reblog_key = post["reblog_key"]
-                tags_to_use = [f"blog: {blog}"] + [item for item in post["tags"] if item not in global_tag_ignore_list]
-
-                # print(f"{blog} {post_id} {reblog_key}")
-
                 try:
-                    conn.execute(
-                        f"INSERT INTO posts VALUES ('{blog}', '{post_id}', '{reblog_key}', '{re.sub(r"(\w)\"(\w)", r"\1''\2", str(tags_to_use).replace('\'', '\"'))}', 0)"
+                    cursor.execute(
+                        f"INSERT INTO posts VALUES (?, ?, ?, ?, 0)",
+                        (
+                            post["blog"][0],  # blog name
+                            post["id"],
+                            post["reblog_key"],
+                            str([f"blog: {post['blog'][0]}"] + [item for item in post["tags"] if item not in global_tag_ignore_list])
+                        )
                     )
-                except sqlite3.IntegrityError:
-                    pass
+                except sqlite3.IntegrityError:  # if the post is already in there
+                    pass  # that's fine, keep going
                     
         print("committing changes")
         conn.commit()
 
 
-get_posts_from_all_blogs(bloglist, taglist, skip=109)
+# get_posts_from_all_blogs(bloglist, taglist)
+get_posts_from_all_blogs(bloglist, taglist)

@@ -12,7 +12,7 @@ client = pytumblr.TumblrClient(
 )
 
 
-def blog_name_change(prev, new):
+def blog_name_change(prev: str, new: str):
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
@@ -69,3 +69,33 @@ def build_bloglist_from_txt():
     conn.commit()
     conn.close()
 
+def add_to_bloglist_from_txt():
+    with open("bloglist.txt") as file:
+        bloglist = [blog.removesuffix("\n") for blog in file.readlines()]
+    bloglist.sort()
+    conn = sqlite3.connect("posts.sqlite3")
+    cursor = conn.cursor()
+    
+    with alive_bar(len(bloglist)) as bar:
+        for blog in bloglist:
+            blog_info = client.blog_info(blog)[0]
+            
+            if blog_info["meta"]["status"] == 404:
+                print(f"{blog} not found")
+                with open("warnings.txt", "a", encoding="utf-8") as file:
+                    file.write(f"{blog} not found\n")
+                bar()
+                continue
+                    
+            uuid = blog_info["response"]["blog"]["uuid"]
+            
+            try:
+                cursor.execute(f"INSERT INTO blogs (name, uuid) VALUES (?, ?)", (blog, uuid))
+            except sqlite3.IntegrityError:
+                continue
+            
+            bar()
+            
+    conn.commit()
+    conn.close()
+    

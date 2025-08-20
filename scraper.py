@@ -310,7 +310,6 @@ def get_posts_from_all_blogs(
                 break  # stop going through tags if this blog can't be found
 
             if posts in ["already have all posts", "no posts", "no posts with images"]:
-                print(posts)  # (this just prints whichever of those ^ three messages it was)
                 continue
 
             if not posts:

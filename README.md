@@ -1,7 +1,10 @@
 <h1 align="center">emoji archive bot</h1>
 <p align="center"><img src="https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s128x128u_c1/5762af1243928a7d3d00164ccb910254a4803c72.png"></p>
 <h2 align="center">a tumblr bot that archives emojis and AAC symbols from a bloglist</h2>
-<p align="center"><a href="https://tumblr.com/emoji-archive-bot"><img alt="Check it out on Tumblr" src="https://file.garden/aG_3eJVriWyKKSnP/devins-badges/tumblr_it_cozy.svg"></a></p>
+<p align="center">
+    <a href="https://tumblr.com/emoji-archive-bot"><img alt="Check it out on Tumblr" src="https://file.garden/aG_3eJVriWyKKSnP/devins-badges/tumblr_it_cozy.svg" height="64"></a>
+    <img alt="Built with Python" src="https://badges.penpow.dev/badges/built-with/python/cozy.svg" height="64">
+</p>
 
 every 30 minutes, this bot will reblog a random emoji post from those on the bloglist and automatically tag it with "#blog: \[blog name\]" and the original post's tags (minus a few that are configured to be ignored).
 the database containing said posts is only updated every so often updates are currently triggered manually, not automatically.
@@ -28,7 +31,7 @@ i'm very unlikely to notice otherwise, this blog has thousands of posts to go th
   <dd>
     for the simple explanation: every so often, i'll tell the bot to search every blog in the bloglist for all the posts they have with certain tags.
     for every post it finds, if it has any images, it'll add that to a database. then, every 30 minutes, the bot will grab a random post it hasn't yet reblogged and reblog it.<br>
-    for the more detailed explanation, check out<a href="#how-it-works">§ how it works</a>!
+    for the more detailed explanation, check out <a href="#how-it-works">§ how it works</a>!
   </dd>
 </dl>
 

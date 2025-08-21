@@ -2,8 +2,7 @@
 <p align="center"><img src="https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s128x128u_c1/5762af1243928a7d3d00164ccb910254a4803c72.png"></p>
 <h2 align="center">a tumblr bot that archives emojis and AAC symbols from a bloglist</h2>
 <p align="center">
-    <a href="https://tumblr.com/emoji-archive-bot"><img alt="Check it out on Tumblr" src="https://file.garden/aG_3eJVriWyKKSnP/devins-badges/tumblr_it_cozy.svg"></a>
-    <br>
+    <a href="https://tumblr.com/emoji-archive-bot"><img alt="Check it out on Tumblr" src="https://file.garden/aG_3eJVriWyKKSnP/devins-badges/tumblr_it_cozy.svg" style="height: 64px"></a>
     <img alt="Built with Python" src="https://badges.penpow.dev/badges/built-with/python/cozy.svg">
 </p>
 

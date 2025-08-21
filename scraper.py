@@ -303,7 +303,7 @@ def get_posts_from_all_blogs(
     cursor = conn.cursor()
 
     with open("output.py", "r", encoding="utf-8") as file:
-        # if you're someone else running this and it threw an error just make an output.py file. i'll remove this later
+        # if you're someone else running this and it threw an error just make an output.py file and put something python parsable in it. i'll remove this later
         file_text = eval(file.read())
 
     posts = ""

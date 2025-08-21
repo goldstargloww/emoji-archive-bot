@@ -293,6 +293,12 @@ def get_posts_from_all_blogs(
     skip: int = 0,  # skip the first n blogs in bloglist
     filter: bool = True,
 ):
+    """gets posts from all blogs and all tags
+
+    Args:
+        blogs (list[list[str]]): bloglist [[blog_name, blog_uuid]]
+        skip (int, optional): number of blogs to skip. take the number of the blog you were in the middle of and subtract 1
+    """
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
@@ -340,4 +346,4 @@ def get_posts_from_all_blogs(
 
 
 # get_posts_from_all_blogs(bloglist, taglist)
-get_posts_from_all_blogs(bloglist, taglist)
+get_posts_from_all_blogs(bloglist, taglist, skip=98)

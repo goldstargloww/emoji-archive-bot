@@ -1,4 +1,5 @@
 # modified version of pytumblr for use here because i need rate limit access
+# also allows the use of UUIDs
 # https://github.com/tumblr/pytumblr
 
 import urllib.parse
@@ -192,7 +193,7 @@ class TumblrClient(object):
         return self.send_api_request("get", "/v2/user/info")
     
     # NOTE: skipped methods that i didn't import:
-    # avatar, likes, following, dashboard, blog_following, followers, blog_likes, drafts, submission, follow, unfollow, like, unlike, create_photo, create_text, create_quote, create_link, create_chat, create_audio, create_video, delete_post, edit_post, notes
+    # avatar, likes, following, dashboard, blog_following, followers, blog_likes, drafts, submission, follow, unfollow, like, unlike, create_photo, create_quote, create_link, create_chat, create_audio, create_video, delete_post, edit_post, notes
     
     def tagged(self, tag, **kwargs):
         """
@@ -279,6 +280,26 @@ class TumblrClient(object):
             # Take a list of tags and make them acceptable for upload
             kwargs['tags'] = ",".join(kwargs['tags'])
         return self.send_api_request('post', url, kwargs, valid_options)
+    
+    @validate_blogname
+    def create_text(self, blogname, **kwargs):
+        """
+        Create a text post on a blog
+
+        :param blogname: a string, the url of the blog you want to post to.
+        :param state: a string, The state of the post.
+        :param tags: a list of tags that you want applied to the post
+        :param tweet: a string, the customized tweet that you want
+        :param date: a string, the GMT date and time of the post
+        :param format: a string, sets the format type of the post. html or markdown
+        :param slug: a string, a short text summary to the end of the post url
+        :param title: a string, the optional title of a post
+        :param body: a string, the body of the text post
+
+        :returns: a dict created from the JSON response
+        """
+        kwargs.update({"type": "text"})
+        return self._send_post(blogname, kwargs)
     
     def _post_valid_options(self, post_type=None):
         # Parameters valid for /post, /post/edit, and /post/reblog.

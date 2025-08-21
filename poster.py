@@ -31,3 +31,20 @@ if results:
     
     conn.commit()
     conn.close()
+else:
+    with open("warnings.txt", "r", encoding="utf-8") as file:
+        warnings = file.readlines()
+    if "out of posts" in warnings:
+        pass
+    else:
+        with open("warnings.txt", "a", encoding="utf-8") as file:
+            file.write("out of posts\n")
+        client.create_text(
+            "emoji-archive-bot", 
+            body="[automated] hey @goldstargloww i've run out of posts help me", 
+            tags=[
+                "don't worry i just need to run the scraper again and this is a reminder to make me do that",
+                "bot post",
+                "not an emoji"
+                ]
+            )

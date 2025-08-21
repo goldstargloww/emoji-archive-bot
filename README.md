@@ -7,7 +7,7 @@
 </p>
 
 every 30 minutes, this bot will reblog a random emoji post from those on the bloglist and automatically tag it with "#blog: \[blog name\]" and the original post's tags (minus a few that are configured to be ignored).
-the database containing said posts is only updated every so often, and updates are currently triggered manually, not automatically.ally.
+the database containing said posts is only updated every so often, and updates are currently triggered manually, not automatically.
 
 i find blogs on my own, but if you'd like to be added to the bloglist, just send an ask on [tumblr](https://tumblr.com/emoji-archive-bot)!
 please note that it'll likely be a while before you're added as i only update the bloglist and database every so often, but once you are, your posts should be in the database within the next few days

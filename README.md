@@ -33,6 +33,13 @@ i'm very unlikely to notice otherwise, this blog has thousands of posts to go th
     for every post it finds, if it has any images, it'll add that to a database. then, every 30 minutes, the bot will grab a random post it hasn't yet reblogged and reblog it.<br>
     for the more detailed explanation, check out <a href="#how-it-works">§ how it works</a>!
   </dd>
+
+  <dt>
+      how do you get this to run periodically on your computer?
+  </dt>
+  <dd>
+      i run windows, so i use windows' Task Scheduler. the task starts at system startup and repeats every 30 minutes indefinitely. the action is to start a program and the command is <code>cmd /c python "C:\path\to\emoji-archive-bot\poster.py</code>. that's it!
+  </dd>
 </dl>
 
 # how it works

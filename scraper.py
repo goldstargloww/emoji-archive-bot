@@ -145,10 +145,21 @@ def check_rate_limit(response: dict[str], headers: dict[str]):
 def get_posts_from_blog(
     blog: list[str],
     tag: str,
-    filter: bool = True,
-    current_posts: list[dict] | None = None,
-    repeated_posts_threshold: int = 5,
+    check_for_repeated_posts: bool = True,
+    repeated_posts_threshold: int = 1
 ) -> list[dict]:
+    """gets posts from all blogs and all tags
+
+    Args:
+        blog ([blog_name: str, blog_uuid: str]): the blog you want to search
+        tag (str): the tag you want to search
+        check_for_repeated_posts (bool = True): whether or not to check if a post is already in the database
+        repeated_posts_threshold (int = 1): if checking for repeated posts, how many posts does it take to decide you have all of them
+    Returns:
+        out (str | list[dict]): either a message returning a status update ("blog not found", "already have all posts",\
+            "no posts", "no posts with images"), or a list of dictionaries each containing a post, in the format {"blog": [blog_name, blog_uuid],\
+            "id": post["id"], "tags": post["tags"], "reblog_key": post["reblog_key"]}
+    """
     
     blog_name = blog[0]
     blog_uuid = blog[1]
@@ -166,19 +177,15 @@ def get_posts_from_blog(
     data = response["response"]  # get the data from the response
     new_data = []  # list for new format of the data
 
-
+    conn = sqlite3.connect("posts.sqlite3")
+    cursor = conn.cursor()
 
     if data["total_posts"] > 0:  # make sure there's any posts to begin with
         consecutive_repeated_posts = 0  # log consecutive repeated posts
         offset_range = math.ceil(data["total_posts"] / 20)  # figure out how many pages there are
         
-        
-        
         blog_name_from_data = data["blog"]["name"]
         if blog_name != blog_name_from_data:  # if the stored blog name is different from the received blog name
-            conn = sqlite3.connect("posts.sqlite3")
-            cursor = conn.cursor()
-            
             cursor.execute("SELECT * FROM blogs WHERE name = ?", (blog_name,))  # check to see if the old name is still in the blog list
             if cursor.fetchall():  # if it is
                 cursor.execute("UPDATE blogs SET name = ? WHERE uuid = ?", (blog_name_from_data, blog_uuid))  # replace it
@@ -193,22 +200,19 @@ def get_posts_from_blog(
                 util.blog_name_change(blog_name, blog_name_from_data)  # change posts in database to reflect new name
             
             conn.commit()
-            conn.close()
             
             blog_name = blog_name_from_data
             blog = [blog_name, blog_uuid]
-
-
 
         # progress bar
         with alive_bar(data["total_posts"], title=f"{blog_name} (#{tag})") as bar:
 
             for i in range(offset_range):  # for every page
 
-                # check if the number of consecutive repeated posts has hit or passed the threshold
+                # check if the number of consecutive repeated posts has hit or passed the threshold, just in case
                 if consecutive_repeated_posts >= repeated_posts_threshold:
-                    print("[DEBUG] (PAGE) already have this post; hit the threshold; breaking")
-                    for i in range(offset_range - i):
+                    print("[DEBUG] (PAGE) already have this post; hit the threshold; breaking (at start)")
+                    for i in range(data["total_posts"] - i*20):
                         bar()  # finish off the progress bar
                     return "already have all posts"
 
@@ -242,24 +246,30 @@ def get_posts_from_blog(
                             # TODO: make a version of this that works
                             # search for [[MORE]] in posts[0]trail[0][content_raw] or posts[0]reblog[comment], i think
                             # alternatively go through things the blog has already posted and search for a.tmblr-truncated-link.read_more
-                            
 
-                    # make sure the post has any images, if we're doing that
-                    if soup.find_all("figure") or not filter:
 
-                        if current_posts:  # if we were given the list of posts already in the database
-                            if post in current_posts:  # if this post is already in the database
-                                consecutive_repeated_posts += 1  # that's another repeated post
+                    if soup.find_all("figure"):  # make sure the post has any images
+
+                        if check_for_repeated_posts:
+                            # check to see if the post is already in the database
+                            cursor.execute("SELECT * FROM posts WHERE post_id = ?", (post["id"],))
+                            if cursor.fetchall():  # if it is
+                                consecutive_repeated_posts += 1  # count another repeated post
 
                                 if consecutive_repeated_posts >= repeated_posts_threshold:
                                     # if the number of consecutive repeated posts has hit or passed the threshold
-                                    print("[DEBUG] (POST) already have this post; hit the threshold; breaking")
+                                    print("[DEBUG] (POST) already have this post; hit the threshold; breaking (at end)")
+                                    for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
+                                        bar()  # finish off the progress bar
                                     return "already have all posts"  # return; we likely already have all posts
                                 else:
                                     print(f"[DEBUG] already have this post; count is now {consecutive_repeated_posts}; skipping")
                                     # if this post is already in the database, but the threshold wasn't hit,
                                     # just go on to the next one instead of logging it again
+                                    for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
+                                        bar()  # finish off the progress bar
                                     continue
+                                
 
                         new_data.append(
                             {
@@ -273,17 +283,18 @@ def get_posts_from_blog(
                         print("[DEBUG] post doesn't have images; skipping")
 
                     bar()  # advance progress bar
-
     else:
         # if there's no posts
         print(f"{blog_name} (#{tag}) | no posts")
+        conn.close()
         return "no posts"
     
     if new_data == []:
         # if there's no posts with images
         print(f"{blog_name} (#{tag}) | no posts with images")
+        conn.close()
         return "no posts with images"
-
+    conn.close()
     return new_data
 
 
@@ -291,23 +302,23 @@ def get_posts_from_all_blogs(
     blogs: list[list[str]],  # [[blog_name, blog_uuid]]
     tags_to_search: list,
     skip: int = 0,  # skip the first n blogs in bloglist
-    filter: bool = True,
 ):
     """gets posts from all blogs and all tags
 
     Args:
-        blogs (list[list[str]]): bloglist [[blog_name, blog_uuid]]
-        skip (int, optional): number of blogs to skip. take the number of the blog you were in the middle of and subtract 1
+        blogs ([[blog_name: str, blog_uuid: str]]): list of blogs to search 
+        tags_to_search (list[str]): list of tags to search
+        skip (int = 0): number of blogs to skip. take the rowid of the blog you were in the middle of and subtract 1
     """
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
-    posts = ""
+    posts = None
 
-    for blog_name, blog_uuid in blogs[skip:]:
+    for blog_name, blog_uuid, active in blogs[skip:]:
         print(blog_name)
         for tag in tags_to_search:
-            posts = get_posts_from_blog([blog_name, blog_uuid], tag, filter=filter)
+            posts = get_posts_from_blog([blog_name, blog_uuid], tag)
 
             if posts == "blog not found":
                 break  # stop going through tags if this blog can't be found
@@ -343,4 +354,4 @@ def get_posts_from_all_blogs(
 
 
 # get_posts_from_all_blogs(bloglist, taglist)
-get_posts_from_all_blogs(bloglist, taglist, skip=98)
+get_posts_from_all_blogs(bloglist, taglist, skip=37)

@@ -38,7 +38,7 @@ i'm very unlikely to notice otherwise, this blog has thousands of posts to go th
       how do you get this to run periodically on your computer?
   </dt>
   <dd>
-      i run windows, so i use windows' Task Scheduler. the task starts at system startup and repeats every 30 minutes indefinitely. the action is to start a program and the command is <code>cmd /c python "C:\path\to\emoji-archive-bot\poster.py</code>. that's it!
+      i run windows, so i use windows' Task Scheduler. the task starts at system startup and repeats every 30 minutes indefinitely. the action is to start a program and the command is <code>pyw</code>, argument is <code>poster.py</code>, and location is the folder on my computer of this repository. that's it!
   </dd>
 </dl>
 

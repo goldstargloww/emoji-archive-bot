@@ -113,13 +113,14 @@ def update_bloglist_names_activities():
             if blog_info["meta"]["status"] == 404:
                 print(f"{name} not found; marking inactive")
                 conn.execute(
-                    f"UPDATE blogs SET active = 0 WHERE uuid = '{uuid}'"
+                    f"UPDATE blogs SET active = 0 WHERE uuid = ?",
+                    (uuid,)
                 )
             else:
                 response_name = blog_info["response"]["blog"]["name"]
                 if name != response_name:
                     print(f"{name} seems to now be {response_name}; updating database")
-                    cursor.execute(f"SELECT * FROM posts WHERE blog = '{name}'")
+                    cursor.execute(f"SELECT * FROM posts WHERE blog = ?", (name,))
                     results = cursor.fetchall()
                     for result in results:
                         post_tags: str = result[3]

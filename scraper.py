@@ -96,7 +96,7 @@ global_tag_block_list = ["nsfw", "not emoji", "not an emoji"]
 
 conn = sqlite3.connect("posts.sqlite3")
 cursor = conn.cursor()
-cursor.execute("SELECT * FROM blogs")
+cursor.execute("SELECT * FROM blogs WHERE active = 1")
 bloglist: list[list[str]] = []
 for item in cursor.fetchall():
     bloglist.append(list(item)) # cast from tuple to list
@@ -302,16 +302,12 @@ def get_posts_from_all_blogs(
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
-    with open("output.py", "r", encoding="utf-8") as file:
-        # if you're someone else running this and it threw an error just make an output.py file and put something python parsable in it. i'll remove this later
-        file_text = eval(file.read())
-
     posts = ""
 
     for blog_name, blog_uuid in blogs[skip:]:
         print(blog_name)
         for tag in tags_to_search:
-            posts = get_posts_from_blog([blog_name, blog_uuid], tag, filter=filter, current_posts=file_text)
+            posts = get_posts_from_blog([blog_name, blog_uuid], tag, filter=filter)
 
             if posts == "blog not found":
                 break  # stop going through tags if this blog can't be found

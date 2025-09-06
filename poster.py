@@ -1,9 +1,13 @@
-import sqlite3, random, os
+import sqlite3, random, os, git
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
 # this file is run every 30 minutes using windows' Task Scheduler
 # you can do something similar on linux with cronjobs
+
+git_branch = git.Repo(os.getcwd()).active_branch.name
+if not git_branch == "main":
+    exit()
 
 load_dotenv()
 client = pytumblr.TumblrClient(

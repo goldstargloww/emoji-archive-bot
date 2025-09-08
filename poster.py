@@ -1,4 +1,4 @@
-import sqlite3, random, os, git
+import sqlite3, random, os, git, datetime
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 
 git_branch = git.Repo(os.getcwd()).active_branch.name
 if not git_branch == "main":
+    with open("warnings.txt", "a", encoding="utf-8") as file:
+        file.write(f"not on main branch, instead on {git_branch}; not posting ({datetime.now()})\n")
     exit()
 
 load_dotenv()

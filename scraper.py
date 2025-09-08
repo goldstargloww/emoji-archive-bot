@@ -354,4 +354,4 @@ def get_posts_from_all_blogs(
 
 
 # get_posts_from_all_blogs(bloglist, taglist)
-get_posts_from_all_blogs(bloglist, taglist, skip=37)
+get_posts_from_all_blogs(bloglist, taglist)

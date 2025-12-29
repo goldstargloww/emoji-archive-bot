@@ -193,7 +193,7 @@ class TumblrClient(object):
         return self.send_api_request("get", "/v2/user/info")
     
     # NOTE: skipped methods that i didn't import:
-    # avatar, likes, following, dashboard, blog_following, followers, blog_likes, drafts, submission, follow, unfollow, like, unlike, create_photo, create_quote, create_link, create_chat, create_audio, create_video, delete_post, edit_post, notes
+    # avatar, likes, following, dashboard, blog_following, followers, blog_likes, drafts, submission, follow, unfollow, like, unlike, create_photo, create_quote, create_link, create_chat, create_audio, create_video, delete_post, notes
     
     def tagged(self, tag, **kwargs):
         """
@@ -378,4 +378,27 @@ class TumblrClient(object):
         else:
             return self.request.post(url, params, files)
         
-        
+    @validate_blogname
+    def edit_post(self, blogname, **kwargs):
+        """
+        Edits a post with a given id
+
+        :param blogname: a string, the url of the blog you want to edit
+        :param state: a string, the state of the post. published, draft, queue, or private.
+        :param tags: a list of tags that you want applied to the post
+        :param tweet: a string, the customized tweet that you want
+        :param date: a string, the GMT date and time of the post
+        :param format: a string, sets the format type of the post. html or markdown
+        :param slug: a string, a short text summary to the end of the post url
+        :param id: an int, the post id that you want to edit
+
+        :returns: a dict created from the JSON response
+        """
+        url = "/v2/blog/{}/post/edit".format(blogname)
+
+        if 'tags' in kwargs and kwargs['tags']:
+            # Take a list of tags and make them acceptable for upload
+            kwargs['tags'] = ",".join(kwargs['tags'])
+
+        valid_options = ['id'] + self._post_valid_options(kwargs.get('type', None))
+        return self.send_api_request('post', url, kwargs, valid_options)

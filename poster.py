@@ -31,12 +31,17 @@ if results:
     post_reblog_key = results[2]
     post_tags = eval(results[3])
     
-    client.reblog("emoji-archive-bot", id=post_id, reblog_key=post_reblog_key, tags=post_tags)
-    
-    cursor.execute(f"UPDATE posts set reblogged = 1 WHERE post_id = '{post_id}'")
-    
-    conn.commit()
-    conn.close()
+    response = client.reblog("emoji-archive-bot", id=post_id, reblog_key=post_reblog_key, tags=post_tags)
+
+    try:
+        if response["meta"]["status"] == 201: # if it succeeded
+            cursor.execute(f"UPDATE posts set reblogged = 1 WHERE post_id = '{post_id}'")
+            
+            conn.commit()
+            conn.close()
+    except:
+        # it failed, probably due to hitting the post limit. don't worry about it and don't update the database
+        pass
 else:
     with open("warnings.txt", "r", encoding="utf-8") as file:
         warnings = file.readlines()

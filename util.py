@@ -2,6 +2,7 @@ import sqlite3, re, os
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
+import datetime
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -91,15 +92,17 @@ def add_to_bloglist_from_txt():
             
             try:
                 cursor.execute(f"INSERT INTO blogs (name, uuid) VALUES (?, ?)", (blog, uuid))
+                bar()
             except sqlite3.IntegrityError:
+                bar()
                 continue
             
-            bar()
+            
             
     conn.commit()
     conn.close()
     
-def update_bloglist_names_activities():
+def update_bloglist_names_and_status():
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 

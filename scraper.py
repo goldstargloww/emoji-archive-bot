@@ -1,4 +1,4 @@
-import sqlite3, time, math, re, os, time, util
+import sqlite3, time, math, re, os, time, util, datetime
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
@@ -194,12 +194,12 @@ def get_posts_from_blog(
                     file.write(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})\n")
                     # write to warnings to check later
                     # so i can replace already posted things' tags
+            
+            conn.commit()  # moved this because i kept getting database is locked errors when trying to change the blog name. hopefully this doesn't break anything
                     
             cursor.execute("SELECT * FROM posts WHERE blog = ?", (blog_name,))  # check to see if the old name is still in the post database
             if cursor.fetchall():  # if it is
                 util.blog_name_change(blog_name, blog_name_from_data)  # change posts in database to reflect new name
-            
-            conn.commit()
             
             blog_name = blog_name_from_data
             blog = [blog_name, blog_uuid]
@@ -353,5 +353,17 @@ def get_posts_from_all_blogs(
         conn.commit()
 
 
+def last_scan():
+    response = client.posts("emoji-archive-bot", id="772243895949099008")[0]["response"]
+    body = response["posts"][0]["body"]
+    pattern = r"(<p><b>last scan:<\/b> )(.+?)(<\/p>)"
+    body = re.sub(pattern, r"\g<1>" + datetime.date.today().isoformat() + r"\g<3>", body)
+    print(body)
+    client.create_text("emoji-archive-bot", state="draft", tags=response["posts"][0]["tags"], format="html", body=body)
+    out = client.edit_post("emoji-archive-bot", state="published", type="text", tags=response["posts"][0]["tags"], format="html", body=body, id=772243895949099008)
+    print(out)
+
+
 # get_posts_from_all_blogs(bloglist, taglist)
-get_posts_from_all_blogs(bloglist, taglist)
+# get_posts_from_all_blogs(bloglist, taglist, skip=85)
+last_scan()

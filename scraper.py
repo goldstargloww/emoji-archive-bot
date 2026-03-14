@@ -315,7 +315,11 @@ def get_posts_from_all_blogs(
 
     posts = None
 
-    for blog_name, blog_uuid, active in blogs[skip:]:
+    for blog_name, blog_uuid, active, tags in blogs[skip:]:
+        if tags:
+            tags = eval(tags)
+            if type(tags) == list:
+                tags_to_search += tags
         print(blog_name)
         for tag in tags_to_search:
             posts = get_posts_from_blog([blog_name, blog_uuid], tag)
@@ -366,4 +370,4 @@ def last_scan():
 
 # get_posts_from_all_blogs(bloglist, taglist)
 # get_posts_from_all_blogs(bloglist, taglist, skip=85)
-last_scan()
+get_posts_from_all_blogs(bloglist, taglist)

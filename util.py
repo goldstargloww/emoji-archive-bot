@@ -1,8 +1,16 @@
-import sqlite3, re, os
+import sqlite3, re, os, logging, datetime, sys
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
-import datetime
+
+now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+os.makedirs("logs/util", exist_ok=True)
+logging.basicConfig(
+    handlers=[logging.FileHandler(f"logs/util/{now}.log"), logging.StreamHandler(sys.stdout)],
+    format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
+)
+log = logging.getLogger("emojibot_util")
+log.setLevel(logging.DEBUG)
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -87,8 +95,9 @@ def add_to_bloglist_from_txt():
                 with open("warnings.txt", "a", encoding="utf-8") as file:
                     file.write(f"{blog} not found\n")
                 active = False
-                    
-            uuid = blog_info["response"]["blog"]["uuid"]
+
+            if active:
+                uuid = blog_info["response"]["blog"]["uuid"]
             
             try:
                 cursor.execute(f"INSERT INTO blogs (name, uuid) VALUES (?, ?)", (blog, uuid))
@@ -103,26 +112,39 @@ def add_to_bloglist_from_txt():
     conn.close()
     
 def update_bloglist_names_and_status():
+    log.info("updating bloglist names and statuses!")
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
-    cursor.execute(f"SELECT * FROM blogs WHERE active = 1")
-    bloglist: list[tuple[str, str]] = [(blog[0], blog[1]) for blog in cursor.fetchall()]
+    cursor.execute(f"SELECT * FROM blogs")
+    bloglist: list[tuple[str, str]] = [(blog[0], blog[1], blog[2]) for blog in cursor.fetchall()]
 
     with alive_bar(len(bloglist)) as bar:
-        for name, uuid in bloglist:
+        for name, uuid, status in bloglist:
             blog_info = client.blog_info(uuid)[0]
             
             if blog_info["meta"]["status"] == 404:
-                print(f"{name} not found; marking inactive")
-                conn.execute(
-                    f"UPDATE blogs SET active = 0 WHERE uuid = ?",
-                    (uuid,)
-                )
+                if status:
+                    log.info(f"{name} not found; marking inactive")
+                    conn.execute(
+                        f"UPDATE blogs SET active = 0 WHERE uuid = ?",
+                        (uuid,)
+                    )
+                else:
+                    log.debug(f"{name} not found, but was already marked as inactive; no changes made")
             else:
+                if not status:
+                    log.info(f"{name} was previously marked inactive but seems to be active again; not updating database, but leaving a note")
+                    with open("warnings.txt", "a", encoding="utf-8") as file:
+                        file.write(f"{name} might be active again\n")
                 response_name = blog_info["response"]["blog"]["name"]
                 if name != response_name:
-                    print(f"{name} seems to now be {response_name}; updating database")
+                    log.info(f"{name} seems to now be {response_name}; updating database")
+                    conn.execute(
+                        f"UPDATE blogs SET name = ? WHERE uuid = ?",
+                        (response_name, uuid)
+                    )
+
                     cursor.execute(f"SELECT * FROM posts WHERE blog = ?", (name,))
                     results = cursor.fetchall()
                     for result in results:
@@ -139,5 +161,10 @@ def update_bloglist_names_and_status():
                         )
             bar()
 
+    log.info("committing changes...")
     conn.commit()
+    log.info("changes committed!")
     conn.close()
+
+# add_to_bloglist_from_txt()
+# update_bloglist_names_and_status()

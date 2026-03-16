@@ -1,8 +1,17 @@
-import sqlite3, time, math, re, os, time, util, datetime
+import sqlite3, time, math, re, os, time, util, datetime, logging, sys
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 from alive_progress import alive_bar # for progress bar in terminal
+
+now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+os.makedirs("logs/scraper", exist_ok=True)
+logging.basicConfig(
+    handlers=[logging.FileHandler(f"logs/scraper/{now}.log"), logging.StreamHandler(sys.stdout)],
+    format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
+)
+log = logging.getLogger("emojibot_scraper")
+log.setLevel(logging.INFO)
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -110,6 +119,7 @@ def remove_duplicates(thing):
 
 def check_rate_limit(response: dict[str], headers: dict[str]):
     # there's probably a smarter way to do this but hey it works (mostly)
+    log.debug("checking rate limit...")
     
     if response["meta"]["status"] == 429: # if the rate limit was hit
         perday_remaining = int(headers["X-Ratelimit-Perday-Remaining"]) # remaining requests per day
@@ -117,28 +127,29 @@ def check_rate_limit(response: dict[str], headers: dict[str]):
 
         if perday_remaining == 0:
             perday_reset = int(headers["X-Ratelimit-Perday-Reset"])
+            log.info(f"hit rate limit for the day, sleeping for {time.strftime("%Hh %Mm %Ss", time.gmtime(perday_reset))}")
             try:
                 with alive_bar(perday_reset, title="rate limit") as bar:
                     for _ in range(perday_reset):
                         time.sleep(1)
                         bar()
             except:  # can't nest alivebar, so if there's already one going, just wait instead
-                print(f"hit rate limit, sleeping for {time.strftime("%Hh %Mm %Ss", time.gmtime(perday_reset))}")
                 time.sleep(perday_reset)
             return True
 
         elif perhour_remaining == 0:
             perhour_reset = int(headers["X-Ratelimit-Perhour-Reset"])
+            log.info(f"hit rate limit for the hour, sleeping for {time.strftime("%Hh %Mm %Ss", time.gmtime(perhour_reset))}")
             try:
                 with alive_bar(perhour_reset, title="rate limit") as bar:
                     for _ in range(perhour_reset):
                         time.sleep(1)
                         bar()
             except:  # can't nest alivebar, so if there's already one going, just wait instead
-                print(f"hit rate limit, sleeping for {time.strftime("%Hh %Mm %Ss", time.gmtime(perhour_reset))}")
                 time.sleep(perhour_reset)
             return True
 
+    log.debug("rate limit wasn't hit, it's fine")
     return False # rate limit wasn't hit, it's fine
 
 
@@ -164,12 +175,14 @@ def get_posts_from_blog(
     blog_name = blog[0]
     blog_uuid = blog[1]
 
+    log.debug(f"getting posts from blog {blog_name}")
+
     response, headers = client.posts(blog_uuid, tag=tag)  # get posts
     if check_rate_limit(response, headers):  # check if we hit the rate limit
         response, headers = client.posts(blog_uuid, tag=tag)  # do it again if you hit the rate limit the first time
 
     if response["meta"]["status"] == 404:  # if the blog doesn't exist
-        print("blog not found; skipping blog")
+        log.info("blog not found; skipping blog")
         with open("warnings.txt", "a", encoding="utf-8") as file:
             file.write(f"{blog} not found\n")  # write to warnings file to check later
         return "blog not found"
@@ -189,7 +202,7 @@ def get_posts_from_blog(
             cursor.execute("SELECT * FROM blogs WHERE name = ?", (blog_name,))  # check to see if the old name is still in the blog list
             if cursor.fetchall():  # if it is
                 cursor.execute("UPDATE blogs SET name = ? WHERE uuid = ?", (blog_name_from_data, blog_uuid))  # replace it
-                print(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})")
+                log.info(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})")
                 with open("warnings.txt", "a", encoding="utf-8") as file:
                     file.write(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})\n")
                     # write to warnings to check later
@@ -209,15 +222,18 @@ def get_posts_from_blog(
 
             for i in range(offset_range):  # for every page
 
+                log.debug(f"looping through page {i} of posts with tag {tag}")
+
                 # check if the number of consecutive repeated posts has hit or passed the threshold, just in case
                 if consecutive_repeated_posts >= repeated_posts_threshold:
-                    print("[DEBUG] (PAGE) already have this post; hit the threshold; breaking (at start)")
+                    log.debug("already have this post; hit the threshold; breaking (at start)")
                     for i in range(data["total_posts"] - i*20):
                         bar()  # finish off the progress bar
                     return "already have all posts"
 
                 # get the next page of posts (unless this is the first iteration)
                 if i != 0:
+                    log.debug("fetching next page...")
                     response, headers = client.posts(blog_uuid, tag=tag, offset=i * 20)  # get the next page
                     if check_rate_limit(response, headers):  # check to see if we hit the rate limit
                         response, headers = client.posts(blog_uuid, tag=tag, offset=i * 20)  # do it again if you hit the rate limit the first time
@@ -225,14 +241,18 @@ def get_posts_from_blog(
                     data = response["response"]  # get the data from the response
 
                 for post in data["posts"]:  # for every post in this page
+                    log.debug(f"parsing post {data['posts'].index(post)}")
 
                     # get the html for the post
                     if post["type"] == "answer":  # ask/answer posts
+                        log.debug("post is an ask")
                         soup = BeautifulSoup(post["answer"], "html5lib")
                     elif post["type"] == "photo":  # photo posts
+                        log.debug("post is a photo")
                         soup = BeautifulSoup(post["caption"], "html5lib")
                     else:
                         try:  # other posts
+                            log.debug("post is an other post")
                             soup = BeautifulSoup(post["body"], "html5lib")
                         except KeyError:  # just in case i missed any
                             raise Exception(f"[DEBUG] post type '{post['type']}' has no body")
@@ -258,12 +278,12 @@ def get_posts_from_blog(
 
                                 if consecutive_repeated_posts >= repeated_posts_threshold:
                                     # if the number of consecutive repeated posts has hit or passed the threshold
-                                    print("[DEBUG] (POST) already have this post; hit the threshold; breaking (at end)")
+                                    log.debug("already have this post; hit the threshold; breaking (at end)")
                                     for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
                                         bar()  # finish off the progress bar
                                     return "already have all posts"  # return; we likely already have all posts
                                 else:
-                                    print(f"[DEBUG] already have this post; count is now {consecutive_repeated_posts}; skipping")
+                                    log.debug(f"already have this post; count is now {consecutive_repeated_posts}; skipping")
                                     # if this post is already in the database, but the threshold wasn't hit,
                                     # just go on to the next one instead of logging it again
                                     for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
@@ -280,17 +300,19 @@ def get_posts_from_blog(
                             }
                         )
                     else:
-                        print("[DEBUG] post doesn't have images; skipping")
+                        log.debug("post doesn't have images; skipping")
 
                     bar()  # advance progress bar
     else:
         # if there's no posts
+        log.debug("blog has no posts in this tag")
         print(f"{blog_name} (#{tag}) | no posts")
         conn.close()
         return "no posts"
     
     if new_data == []:
         # if there's no posts with images
+        log.debug("blog has no posts with images in this tag")
         print(f"{blog_name} (#{tag}) | no posts with images")
         conn.close()
         return "no posts with images"
@@ -310,18 +332,21 @@ def get_posts_from_all_blogs(
         tags_to_search (list[str]): list of tags to search
         skip (int = 0): number of blogs to skip. take the rowid of the blog you were in the middle of and subtract 1
     """
+    log.info(f"collecting posts from all blogs, starting with blog number {skip}")
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
     posts = None
 
     for blog_name, blog_uuid, active, tags in blogs[skip:]:
+        log.info(f"searching blog {blog_name}, number {blogs.index([blog_name, blog_uuid, active, tags])}")
         if tags:
             tags = eval(tags)
             if type(tags) == list:
                 tags_to_search += tags
-        print(blog_name)
+        # print(blog_name)
         for tag in tags_to_search:
+            log.info(f"searching tag {tag}")
             posts = get_posts_from_blog([blog_name, blog_uuid], tag)
 
             if posts == "blog not found":
@@ -331,13 +356,18 @@ def get_posts_from_all_blogs(
                 continue
 
             if not posts:
+                log.critical("no posts?!?!?!")
+                log.warning(type(posts))
+                log.warning(str(posts))
                 print("[DEBUG] no posts?!?!?!")  # pretty sure this is supposed to be impossible and that's why i did this
                 print(type(posts))
                 print(posts)
                 exit()
 
+            log.info("adding posts to database...")
             for post in posts:
                 if any(x in global_tag_block_list for x in post["tags"]):
+                    log.debug("post has blocked tag(s); skipping")
                     continue  # skip if any blocked tags
 
                 try:
@@ -350,10 +380,12 @@ def get_posts_from_all_blogs(
                             str([f"blog: {post['blog'][0]}"] + [item for item in post["tags"] if item not in global_tag_ignore_list])
                         )
                     )
+                    log.debug("post inserted successfully")
                 except sqlite3.IntegrityError:  # if the post is already in there
+                    log.debug("post already in database; continuing")
                     pass  # that's fine, keep going
                     
-        print("committing changes")
+        log.debug("committing changes...")
         conn.commit()
 
 
@@ -370,4 +402,4 @@ def last_scan():
 
 # get_posts_from_all_blogs(bloglist, taglist)
 # get_posts_from_all_blogs(bloglist, taglist, skip=85)
-get_posts_from_all_blogs(bloglist, taglist)
+get_posts_from_all_blogs(bloglist, taglist, skip=128)

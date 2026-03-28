@@ -3,14 +3,14 @@ from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
-now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-os.makedirs("logs/util", exist_ok=True)
-logging.basicConfig(
-    handlers=[logging.FileHandler(f"logs/util/{now}.log"), logging.StreamHandler(sys.stdout)],
-    format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
-)
-log = logging.getLogger("emojibot_util")
-log.setLevel(logging.DEBUG)
+# now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+# os.makedirs("logs/util", exist_ok=True)
+# logging.basicConfig(
+#     handlers=[logging.FileHandler(f"logs/util/{now}.log"), logging.StreamHandler(sys.stdout)],
+#     format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
+# )
+# log = logging.getLogger("emojibot_util")
+# log.setLevel(logging.DEBUG)
 
 load_dotenv()
 client = pytumblr.TumblrClient(

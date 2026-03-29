@@ -1,3 +1,5 @@
 #!/bin/bash
-cd "/media/gold/My Book/dualdocuments/coding/emoji-archive-bot"
-./.venv/bin/python poster.py
+cd /home/gold/Documents/Github/emoji-archive-bot
+source .venv/bin/activate
+python3 poster.py
+deactivate

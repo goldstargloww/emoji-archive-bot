@@ -1,4 +1,5 @@
-import sqlite3, time, math, re, os, time, util, datetime, logging, sys
+#!/usr/bin/env python3
+import sqlite3, time, math, re, os, time, datetime, logging, sys
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
@@ -212,7 +213,23 @@ def get_posts_from_blog(
                     
             cursor.execute("SELECT * FROM posts WHERE blog = ?", (blog_name,))  # check to see if the old name is still in the post database
             if cursor.fetchall():  # if it is
-                util.blog_name_change(blog_name, blog_name_from_data)  # change posts in database to reflect new name
+                # change posts in database to use the new name
+                # blog_name = prev name
+                # blog_name_from_data = new name
+                cursor.execute(f"SELECT * FROM posts WHERE blog = '{blog_name}'")
+                results = cursor.fetchall()
+                for result in results:
+                    post_tags: str = result[3]  # re.sub(r"(\w)\"(\w)", "\1\'\2", result[3])
+                    post_tags = post_tags.replace(blog_name, blog_name_from_data)
+                    post_id = result[1]
+                    conn.execute(
+                        f"UPDATE posts SET blog = ? WHERE post_id = ?",
+                        (blog_name_from_data, post_id)
+                    )
+                    conn.execute(
+                        f"UPDATE posts SET tags = ? WHERE post_id = ?",
+                        (post_tags, post_id)
+                    )
             
             blog_name = blog_name_from_data
             blog = [blog_name, blog_uuid]

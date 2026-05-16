@@ -171,3 +171,18 @@ def sample_request(blog_name):
     response, headers = client.posts(blog_name)
     print(response)
     print(headers)
+
+def sample_bloginfo_request(blog_name):
+    response, headers = client.blog_info(blog_name)
+    print(response)
+    print(headers)
+
+def last_scan():
+    response = client.posts("emoji-archive-bot", id=772243895949099008)[0]["response"]
+    body = response["posts"][0]["body"]
+    pattern = r"(<p><b>last scan:<\/b> )(.+?)(<\/p>)"
+    body = re.sub(pattern, r"\g<1>" + datetime.date.today().isoformat() + r"\g<3>", body)
+    print(body)
+    # client.create_text("emoji-archive-bot", state="draft", tags=response["posts"][0]["tags"], format="html", body=body)
+    out = client.edit_post("emoji-archive-bot", state="published", type="text", tags=response["posts"][0]["tags"], format="html", body=body, id=772243895949099008)
+    print(out)

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-import sqlite3, re, os, logging, datetime, sys
+import sqlite3, re, os, datetime, sys
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-os.makedirs("logs/util", exist_ok=True)
-logging.basicConfig(
-    handlers=[logging.FileHandler(f"logs/util/{now}.log"), logging.StreamHandler(sys.stdout)],
-    format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
-)
-log = logging.getLogger("emojibot_util")
-log.setLevel(logging.DEBUG)
+# os.makedirs("logs/util", exist_ok=True)
+# logging.basicConfig(
+#     handlers=[logging.FileHandler(f"logs/util/{now}.log"), logging.StreamHandler(sys.stdout)],
+#     format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
+# )
+# log = logging.getLogger("emojibot_util")
+# log.setLevel(logging.DEBUG)
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -113,7 +113,7 @@ def add_to_bloglist_from_txt():
     conn.close()
     
 def update_bloglist_names_and_status():
-    log.info("updating bloglist names and statuses!")
+    # log.info("updating bloglist names and statuses!")
     conn = sqlite3.connect("posts.sqlite3")
     cursor = conn.cursor()
 
@@ -126,21 +126,21 @@ def update_bloglist_names_and_status():
             
             if blog_info["meta"]["status"] == 404:
                 if status:
-                    log.info(f"{name} not found; marking inactive")
+                    # log.info(f"{name} not found; marking inactive")
                     conn.execute(
                         f"UPDATE blogs SET active = 0 WHERE uuid = ?",
                         (uuid,)
                     )
-                else:
-                    log.debug(f"{name} not found, but was already marked as inactive; no changes made")
+                # else:
+                    # log.debug(f"{name} not found, but was already marked as inactive; no changes made")
             else:
                 if not status:
-                    log.info(f"{name} was previously marked inactive but seems to be active again; not updating database, but leaving a note")
+                    # log.info(f"{name} was previously marked inactive but seems to be active again; not updating database, but leaving a note")
                     with open("warnings.txt", "a", encoding="utf-8") as file:
                         file.write(f"{name} might be active again\n")
                 response_name = blog_info["response"]["blog"]["name"]
                 if name != response_name:
-                    log.info(f"{name} seems to now be {response_name}; updating database")
+                    # log.info(f"{name} seems to now be {response_name}; updating database")
                     conn.execute(
                         f"UPDATE blogs SET name = ? WHERE uuid = ?",
                         (response_name, uuid)
@@ -162,10 +162,12 @@ def update_bloglist_names_and_status():
                         )
             bar()
 
-    log.info("committing changes...")
+    # log.info("committing changes...")
     conn.commit()
-    log.info("changes committed!")
+    # log.info("changes committed!")
     conn.close()
 
-# add_to_bloglist_from_txt()
-# update_bloglist_names_and_status()
+def sample_request(blog_name):
+    response, headers = client.posts(blog_name)
+    print(response)
+    print(headers)

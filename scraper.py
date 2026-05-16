@@ -90,7 +90,7 @@ global_tag_ignore_list = taglist + [
     "discord emoji blog",
     "emoji artist",
     "emote blog",
-    "f2u emoji",
+    # "f2u emoji",
     "nonverbal emoji",
     "nonverbal emojis",
     "nonverbal emote",
@@ -100,6 +100,22 @@ global_tag_ignore_list = taglist + [
     "word moji",
     "word mojis",
     "wordmojis",
+    # "f2u with credit",
+    "anti endos dni",
+    "anti sysmed",
+    "anti harmful transids",
+    "anti harmful para",
+    "anti genai",
+    "emote art",
+    "join our discord",
+    "pro endo",
+    "anti radqueer",
+    "anti endo dni",
+    "anti endo"
+    "emojiblr",
+    "anti endogenic",
+    "emoteblr",
+    "emote art"
 ]
 global_tag_block_list = ["not emoji", "not an emoji", "not emote", "not an emote"]
 

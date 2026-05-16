@@ -331,7 +331,23 @@ def get_posts_from_blog(
                                     for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
                                         bar()  # finish off the progress bar
                                     continue
-                                
+                        
+
+                        # double check to make sure it's the right blog that has the image
+                        for item in post["trail"]:
+                            item_soup = BeautifulSoup(item["content_raw"], "html5lib")
+                            if item_soup.find_all("figure"):
+                                author = item["blog"]["name"]
+                        
+                        if author != blog_name:
+                            author_info, author_headers = client.blog_info(blog_name)
+                            if check_rate_limit(author_info, author_headers):  # check if we hit the rate limit
+                                author_info, author_headers = client.blog_info(blog_name)  # do it again if you hit the rate limit the first time
+                            author_uuid = author_info["blog"]["uuid"]
+                            blog_name = author
+                            blog_uuid = author_uuid
+
+
 
                         new_data.append(
                             {

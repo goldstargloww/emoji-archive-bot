@@ -72,8 +72,9 @@ if result:
         else:
             log.error(f"reblog failed with code {http_code}: {http_message}")
             # it failed, probably due to hitting the post limit. don't worry about it and don't update the database
-    except:
+    except Exception as e:
         log.error("something happened? here's the response:", str(response))
+        log.error(e)
         pass
 else:
     log.warning("out of posts! please run the scraper again!")

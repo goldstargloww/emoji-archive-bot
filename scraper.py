@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
 )
 log = logging.getLogger("emojibot_scraper")
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -299,16 +299,6 @@ def get_posts_from_blog(
                         except KeyError:  # just in case i missed any
                             raise Exception(f"[DEBUG] post type '{post['type']}' has no body")
 
-                    # if there's a read more / keep reading link
-                    # i don't think this works, but i'm keeping it in
-                    if soup.find_all('button[aria-label="Keep reading"]'):
-                        with open("warnings.txt", "a", encoding="utf-8") as file:
-                            # write to warnings file to check manually later
-                            file.write(f"read more: {blog_name}/{post['id']}\n")
-                            # TODO: make a version of this that works
-                            # search for [[MORE]] in posts[0]trail[0][content_raw] or posts[0]reblog[comment], i think
-                            # alternatively go through things the blog has already posted and search for a.tmblr-truncated-link.read_more
-
 
                     if soup.find_all("figure"):  # make sure the post has any images
 
@@ -334,10 +324,17 @@ def get_posts_from_blog(
                         
 
                         # double check to make sure it's the right blog that has the image
+                        # also check if there's a readmore
                         for item in post["trail"]:
                             item_soup = BeautifulSoup(item["content_raw"], "html5lib")
                             if item_soup.find_all("figure"):
                                 author = item["blog"]["name"]
+
+                            # check for readmore
+                            if re.search("\[\[MORE]]", item["content_raw"]):
+                                with open("warnings.txt", "a", encoding="utf-8") as file:
+                                    # write to warnings file to check manually later
+                                    file.write(f"read more: {blog_name}/{post['id']}\n")
                         
                         if author != blog_name:
                             author_info, author_headers = client.blog_info(blog_name)

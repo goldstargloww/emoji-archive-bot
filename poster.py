@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sqlite3, random, os, git, datetime, logging
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv

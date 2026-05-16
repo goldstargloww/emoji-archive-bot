@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
 )
 log = logging.getLogger("emojibot_scraper")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 load_dotenv()
 client = pytumblr.TumblrClient(
@@ -126,7 +126,6 @@ cursor.execute("SELECT * FROM blogs WHERE active = 1")
 bloglist: list[list[str]] = []
 for item in cursor.fetchall():
     bloglist.append(list(item)) # cast from tuple to list
-conn.close()
 
 
 def remove_duplicates(thing):
@@ -208,8 +207,8 @@ def get_posts_from_blog(
     data = response["response"]  # get the data from the response
     new_data = []  # list for new format of the data
 
-    conn = sqlite3.connect("posts.sqlite3")
-    cursor = conn.cursor()
+    # conn = sqlite3.connect("posts.sqlite3")
+    # cursor = conn.cursor()
 
     if data["total_posts"] > 0:  # make sure there's any posts to begin with
         consecutive_repeated_posts = 0  # log consecutive repeated posts
@@ -239,17 +238,18 @@ def get_posts_from_blog(
                     post_tags: str = result[3]  # re.sub(r"(\w)\"(\w)", "\1\'\2", result[3])
                     post_tags = post_tags.replace(blog_name, blog_name_from_data)
                     post_id = result[1]
-                    conn.execute(
+                    cursor.execute(
                         f"UPDATE posts SET blog = ? WHERE post_id = ?",
                         (blog_name_from_data, post_id)
                     )
-                    conn.execute(
+                    cursor.execute(
                         f"UPDATE posts SET tags = ? WHERE post_id = ?",
                         (post_tags, post_id)
                     )
             
             blog_name = blog_name_from_data
             blog = [blog_name, blog_uuid]
+
 
 
         # check the last time the blog was updated; stop if there's been no updates; update if there has been
@@ -331,7 +331,7 @@ def get_posts_from_blog(
                                 author = item["blog"]["name"]
 
                             # check for readmore
-                            if re.search("\[\[MORE]]", item["content_raw"]):
+                            if re.search(r"\[\[MORE]]", item["content_raw"]):
                                 with open("warnings.txt", "a", encoding="utf-8") as file:
                                     # write to warnings file to check manually later
                                     file.write(f"read more: {blog_name}/{post['id']}\n")
@@ -340,7 +340,11 @@ def get_posts_from_blog(
                             author_info, author_headers = client.blog_info(blog_name)
                             if check_rate_limit(author_info, author_headers):  # check if we hit the rate limit
                                 author_info, author_headers = client.blog_info(blog_name)  # do it again if you hit the rate limit the first time
-                            author_uuid = author_info["blog"]["uuid"]
+                            try:
+                                author_uuid = author_info["response"]["blog"]["uuid"]
+                            except Exception as e:
+                                print(e)
+                                print(author_info)
                             blog_name = author
                             blog_uuid = author_uuid
 
@@ -362,16 +366,16 @@ def get_posts_from_blog(
         # if there's no posts
         log.debug("blog has no posts in this tag")
         print(f"{blog_name} (#{tag}) | no posts")
-        conn.close()
+        # conn.close()
         return "no posts"
     
     if new_data == []:
         # if there's no posts with images
         log.debug("blog has no posts with images in this tag")
         print(f"{blog_name} (#{tag}) | no posts with images")
-        conn.close()
+        # conn.close()
         return "no posts with images"
-    conn.close()
+    # conn.close()
     return new_data
 
 
@@ -388,19 +392,18 @@ def get_posts_from_all_blogs(
         skip (int = 0): number of blogs to skip. take the rowid of the blog you were in the middle of and subtract 1
     """
     log.info(f"collecting posts from all blogs, starting with blog number {skip}")
-    conn = sqlite3.connect("posts.sqlite3")
-    cursor = conn.cursor()
 
     posts = None
 
     for blog_name, blog_uuid, active, tags, last_updated in blogs[skip:]:
-        log.info(f"searching blog {blog_name}, number {blogs.index([blog_name, blog_uuid, active, tags])}")
+        log.info(f"searching blog {blog_name}, number {blogs.index([blog_name, blog_uuid, active, tags, last_updated])}")
+        tags_to_search_this_time = tags_to_search
         if tags:
             tags = eval(tags)
             if type(tags) == list:
-                tags_to_search += tags
+                tags_to_search_this_time += tags
         # print(blog_name)
-        for tag in tags_to_search:
+        for tag in tags_to_search_this_time:
             log.info(f"searching tag {tag}")
             posts = get_posts_from_blog([blog_name, blog_uuid], tag, last_updated if last_updated else 0)
 
@@ -439,6 +442,7 @@ def get_posts_from_all_blogs(
                     
         log.debug("committing changes...")
         conn.commit()
+    conn.close()
 
 
 def last_scan():
@@ -447,11 +451,10 @@ def last_scan():
     pattern = r"(<p><b>last scan:<\/b> )(.+?)(<\/p>)"
     body = re.sub(pattern, r"\g<1>" + datetime.date.today().isoformat() + r"\g<3>", body)
     print(body)
-    client.create_text("emoji-archive-bot", state="draft", tags=response["posts"][0]["tags"], format="html", body=body)
+    # client.create_text("emoji-archive-bot", state="draft", tags=response["posts"][0]["tags"], format="html", body=body)
     out = client.edit_post("emoji-archive-bot", state="published", type="text", tags=response["posts"][0]["tags"], format="html", body=body, id=772243895949099008)
     print(out)
 
 
 # get_posts_from_all_blogs(bloglist, taglist)
-# get_posts_from_all_blogs(bloglist, taglist, skip=85)
-get_posts_from_all_blogs(bloglist, taglist, skip=128)
+get_posts_from_all_blogs(bloglist, taglist)

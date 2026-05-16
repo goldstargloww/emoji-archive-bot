@@ -101,7 +101,7 @@ global_tag_ignore_list = taglist + [
     "word mojis",
     "wordmojis",
 ]
-global_tag_block_list = ["nsfw", "not emoji", "not an emoji"]
+global_tag_block_list = ["not emoji", "not an emoji", "not emote", "not an emote"]
 
 
 conn = sqlite3.connect("posts.sqlite3")
@@ -157,6 +157,7 @@ def check_rate_limit(response: dict[str], headers: dict[str]):
 def get_posts_from_blog(
     blog: list[str],
     tag: str,
+    last_updated: int = 0,
     check_for_repeated_posts: bool = True,
     repeated_posts_threshold: int = 1
 ) -> list[dict]:
@@ -168,7 +169,7 @@ def get_posts_from_blog(
         check_for_repeated_posts (bool = True): whether or not to check if a post is already in the database
         repeated_posts_threshold (int = 1): if checking for repeated posts, how many posts does it take to decide you have all of them
     Returns:
-        out (str | list[dict]): either a message returning a status update ("blog not found", "already have all posts",\
+        out (str | list[dict]): either a message returning a status update ("blog not found", "no updates in tag",\
             "no posts", "no posts with images"), or a list of dictionaries each containing a post, in the format {"blog": [blog_name, blog_uuid],\
             "id": post["id"], "tags": post["tags"], "reblog_key": post["reblog_key"]}
     """
@@ -198,6 +199,8 @@ def get_posts_from_blog(
         consecutive_repeated_posts = 0  # log consecutive repeated posts
         offset_range = math.ceil(data["total_posts"] / 20)  # figure out how many pages there are
         
+
+        # update blog name in database if needed
         blog_name_from_data = data["blog"]["name"]
         if blog_name != blog_name_from_data:  # if the stored blog name is different from the received blog name
             cursor.execute("SELECT * FROM blogs WHERE name = ?", (blog_name,))  # check to see if the old name is still in the blog list
@@ -208,8 +211,6 @@ def get_posts_from_blog(
                     file.write(f"{blog_name} renamed to {blog_name_from_data} ({blog_uuid})\n")
                     # write to warnings to check later
                     # so i can replace already posted things' tags
-            
-            conn.commit()  # moved this because i kept getting database is locked errors when trying to change the blog name. hopefully this doesn't break anything
                     
             cursor.execute("SELECT * FROM posts WHERE blog = ?", (blog_name,))  # check to see if the old name is still in the post database
             if cursor.fetchall():  # if it is
@@ -234,8 +235,16 @@ def get_posts_from_blog(
             blog_name = blog_name_from_data
             blog = [blog_name, blog_uuid]
 
-        # progress bar
-        with alive_bar(data["total_posts"], title=f"{blog_name} (#{tag})") as bar:
+
+        # check the last time the blog was updated; stop if there's been no updates; update if there has been
+        new_last_updated = data["blog"]["updated"]
+        if new_last_updated <= last_updated:
+            return "no updates in blog"
+        else:
+            cursor.execute("UPDATE blogs SET last_updated = ? WHERE uuid = ?", (new_last_updated, blog_uuid))
+
+        # start looping through posts
+        with alive_bar(data["total_posts"], title=f"{blog_name} (#{tag})") as bar:  # progress bar
 
             for i in range(offset_range):  # for every page
 
@@ -246,7 +255,7 @@ def get_posts_from_blog(
                     log.debug("already have this post; hit the threshold; breaking (at start)")
                     for i in range(data["total_posts"] - i*20):
                         bar()  # finish off the progress bar
-                    return "already have all posts"
+                    return "no updates in tag"
 
                 # get the next page of posts (unless this is the first iteration)
                 if i != 0:
@@ -298,7 +307,7 @@ def get_posts_from_blog(
                                     log.debug("already have this post; hit the threshold; breaking (at end)")
                                     for i in range(data["total_posts"] - (i*20 + data["posts"].index(post))):
                                         bar()  # finish off the progress bar
-                                    return "already have all posts"  # return; we likely already have all posts
+                                    return "no updates in tag"  # return; we likely already have all posts
                                 else:
                                     log.debug(f"already have this post; count is now {consecutive_repeated_posts}; skipping")
                                     # if this post is already in the database, but the threshold wasn't hit,
@@ -355,7 +364,7 @@ def get_posts_from_all_blogs(
 
     posts = None
 
-    for blog_name, blog_uuid, active, tags in blogs[skip:]:
+    for blog_name, blog_uuid, active, tags, last_updated in blogs[skip:]:
         log.info(f"searching blog {blog_name}, number {blogs.index([blog_name, blog_uuid, active, tags])}")
         if tags:
             tags = eval(tags)
@@ -364,21 +373,18 @@ def get_posts_from_all_blogs(
         # print(blog_name)
         for tag in tags_to_search:
             log.info(f"searching tag {tag}")
-            posts = get_posts_from_blog([blog_name, blog_uuid], tag)
+            posts = get_posts_from_blog([blog_name, blog_uuid], tag, last_updated if last_updated else 0)
 
-            if posts == "blog not found":
-                break  # stop going through tags if this blog can't be found
+            if posts in ["blog not found", "no updates in blog"]:
+                break  # stop going through blog
 
-            if posts in ["already have all posts", "no posts", "no posts with images"]:
+            if posts in ["no updates in tag", "no posts", "no posts with images"]:
                 continue
 
             if not posts:
                 log.critical("no posts?!?!?!")
                 log.warning(type(posts))
                 log.warning(str(posts))
-                print("[DEBUG] no posts?!?!?!")  # pretty sure this is supposed to be impossible and that's why i did this
-                print(type(posts))
-                print(posts)
                 exit()
 
             log.info("adding posts to database...")

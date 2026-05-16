@@ -33,6 +33,8 @@ client = pytumblr.TumblrClient(
     os.getenv('OAUTH_TOKEN_SECRET')
 )
 
+tag_dont_post_list = ["nsfw", "nsft"]
+
 log.debug("connecting to database...")
 conn = sqlite3.connect("posts.sqlite3")
 cursor = conn.cursor()
@@ -42,6 +44,9 @@ cursor.execute("SELECT * FROM posts WHERE reblogged = 0")
 
 results = cursor.fetchall()
 result = random.choice(results)
+# if a post with any don't-post tags were picked, pick a new one
+while any(x in tag_dont_post_list for x in eval(result[3])):
+    result = random.choice(results)
 
 if result:
     log.info(f"successfully fetched {len(results)} posts and chose one!")

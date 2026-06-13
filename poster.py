@@ -55,8 +55,6 @@ if result:
     post_id = result[1]
     post_reblog_key = result[2]
     post_tags = eval(result[3])
-
-    # log.debug(f"post ID: {str(post_id)}", f"post reblog key: {str(post_reblog_key)}", f"post tags: {str(post_tags)}")
     
     response = client.reblog("emoji-archive-bot", id=post_id, reblog_key=post_reblog_key, tags=post_tags)
 
@@ -71,6 +69,7 @@ if result:
             conn.close()
         else:
             log.error(f"reblog failed with code {http_code}: {http_message}")
+            log.debug(f"post ID: {str(post_id)}", f"post reblog key: {str(post_reblog_key)}", f"post tags: {str(post_tags)}")
             # it failed, probably due to hitting the post limit. don't worry about it and don't update the database
     except Exception as e:
         log.error("something happened? here's the response:", str(response))

@@ -1,8 +1,12 @@
-#!/usr/bin/env python3
+#!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
 import sqlite3, re, os, datetime, sys
+# pyrefly: ignore [missing-import]
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
+
+os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 # os.makedirs("logs/util", exist_ok=True)
@@ -118,7 +122,7 @@ def update_bloglist_names_and_status():
     cursor = conn.cursor()
 
     cursor.execute(f"SELECT * FROM blogs")
-    bloglist: list[tuple[str, str]] = [(blog[0], blog[1], blog[2]) for blog in cursor.fetchall()]
+    bloglist: list[tuple[str, str, str]] = [(blog[0], blog[1], blog[2]) for blog in cursor.fetchall()]
 
     with alive_bar(len(bloglist)) as bar:
         for name, uuid, status in bloglist:

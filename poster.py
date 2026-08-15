@@ -1,10 +1,14 @@
-#!/usr/bin/env python3
+#!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
+# pyrefly: ignore [missing-import]
 import sqlite3, random, os, git, datetime, logging
 import custom_pytumblr as pytumblr
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 # this file is run every 30 minutes using windows' Task Scheduler
 # you can do something similar on linux with cronjobs
+
+os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 os.makedirs("logs/poster", exist_ok=True)
@@ -44,8 +48,13 @@ cursor.execute("SELECT * FROM posts WHERE reblogged = 0")
 
 results = cursor.fetchall()
 result = random.choice(results)
+dont_post_counter = 0
 # if a post with any don't-post tags were picked, pick a new one
 while any(x in tag_dont_post_list for x in eval(result[3])):
+    dont_post_counter += 1
+    if dont_post_counter >= len(results):
+        out_of_posts()
+        break
     result = random.choice(results)
 
 if result:
@@ -76,6 +85,9 @@ if result:
         log.error(e)
         pass
 else:
+    out_of_posts()
+
+def out_of_posts():
     log.warning("out of posts! please run the scraper again!")
     with open("warnings.txt", "r", encoding="utf-8") as file:
         warnings = file.readlines()

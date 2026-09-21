@@ -1,10 +1,14 @@
 #!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
-import sqlite3, random, os, git, datetime, logging
+import sqlite3, random, os, git, datetime, logging, httpx, json
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
 # this file is run every 30 minutes using windows' Task Scheduler
 # you can do something similar on linux with cronjobs
+
+webhook_url = f"https://discord.com/api/webhooks/{os.getenv('webhook_id')}/{os.getenv('webhook_token')}?thread_id={os.getenv('webhook_thread_id')}"
+webhook_avatar_url = "https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s999999999x999999999/5507618b6476183ad8fff79e4fae570acce7bcc6.png"
+webhook_username = "emoji archive bot"
 
 os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
 
@@ -64,6 +68,9 @@ if result:
     post_tags = eval(result[3])
     
     response = client.reblog("emoji-archive-bot", id=post_id, reblog_key=post_reblog_key, tags=post_tags)
+    
+    with open("output.py", "w") as file:
+        json.dump(response, file)
 
     try:
         http_code = response["meta"]["status"]
@@ -71,6 +78,16 @@ if result:
         if http_code == 201: # if it succeeded
             log.info("reblog successful!")
             cursor.execute(f"UPDATE posts set reblogged = 1 WHERE post_id = '{post_id}'")
+            
+            if "e:/has a readmore" in post_tags:
+                httpx.post(
+                    webhook_url,
+                    json={
+                        "username": webhook_username,
+                        "avatar_url": webhook_avatar_url,
+                        "content": f"readmore spotted! <https://tumblr.com/emoji-archive-bot/{response['response']['id_string']}>"
+                    }
+                )
             
             conn.commit()
             conn.close()
@@ -94,12 +111,20 @@ def out_of_posts():
     else:
         with open("warnings.txt", "a", encoding="utf-8") as file:
             file.write("out of posts\n")
-        client.create_text(
-            "emoji-archive-bot", 
-            body="[automated] hey @goldstargloww i've run out of posts help me", 
-            tags=[
-                "don't worry i just need to run the scraper again and this is a reminder to make me do that",
-                "bot post",
-                "not an emoji"
-                ]
-            )
+        # client.create_text(
+        #     "emoji-archive-bot", 
+        #     body="[automated] hey @goldstargloww i've run out of posts help me", 
+        #     tags=[
+        #         "don't worry i just need to run the scraper again and this is a reminder to make me do that",
+        #         "bot post",
+        #         "not an emoji"
+        #         ]
+        #     )
+        httpx.post(
+            webhook_url,
+            json={
+                "username": webhook_username,
+                "avatar_url": webhook_avatar_url,
+                "content": "OUT OF POSTS!!! HELP!!!"
+            }
+        )

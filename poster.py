@@ -1,14 +1,10 @@
-#!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
+#!/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot/.venv/bin/python
 import sqlite3, random, os, git, datetime, logging, httpx, json
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
 # this file is run every 30 minutes using windows' Task Scheduler
 # you can do something similar on linux with cronjobs
-
-webhook_url = f"https://discord.com/api/webhooks/{os.getenv('webhook_id')}/{os.getenv('webhook_token')}?thread_id={os.getenv('webhook_thread_id')}"
-webhook_avatar_url = "https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s999999999x999999999/5507618b6476183ad8fff79e4fae570acce7bcc6.png"
-webhook_username = "emoji archive bot"
 
 os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
 
@@ -21,15 +17,50 @@ log.setLevel(logging.DEBUG)
 log.debug("getting current git branch...")
 git_branch = git.Repo(os.getcwd()).active_branch.name
 if not git_branch == "main":
-    log.warning(f"not on main branch, instead on {git_branch}; not posting ({datetime.now()})")
+    log.warning(f"not on main branch, instead on {git_branch}; not posting ({datetime.datetime.now()})")
     with open("warnings.txt", "a", encoding="utf-8") as file:
-        file.write(f"not on main branch, instead on {git_branch}; not posting ({datetime.now()})\n")
+        file.write(f"not on main branch, instead on {git_branch}; not posting ({datetime.datetime.now()})\n")
     exit()
 else:
     log.debug("on main branch! continuing")
+    
 
 log.debug("loading environment variables...")
 load_dotenv()
+
+webhook_url = f"https://discord.com/api/webhooks/{os.getenv('webhook_id')}/{os.getenv('webhook_token')}?thread_id={os.getenv('webhook_thread_id')}"
+webhook_avatar_url = "https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s999999999x999999999/5507618b6476183ad8fff79e4fae570acce7bcc6.png"
+webhook_username = "emoji archive bot"    
+
+
+def out_of_posts():
+    log.warning("out of posts! please run the scraper again!")
+    with open("warnings.txt", "r", encoding="utf-8") as file:
+        warnings = file.readlines()
+    if "out of posts" in warnings:
+        pass
+    else:
+        with open("warnings.txt", "a", encoding="utf-8") as file:
+            file.write("out of posts\n")
+        # client.create_text(
+        #     "emoji-archive-bot", 
+        #     body="[automated] hey @goldstargloww i've run out of posts help me", 
+        #     tags=[
+        #         "don't worry i just need to run the scraper again and this is a reminder to make me do that",
+        #         "bot post",
+        #         "not an emoji"
+        #         ]
+        #     )
+        httpx.post(
+            webhook_url,
+            json={
+                "username": webhook_username,
+                "avatar_url": webhook_avatar_url,
+                "content": "OUT OF POSTS!!! HELP!!!"
+            }
+        )
+        
+
 
 log.debug("initializing tumblr client...")
 client = pytumblr.TumblrClient(
@@ -49,6 +80,9 @@ log.info("fetching non-reblogged posts...")
 cursor.execute("SELECT * FROM posts WHERE reblogged = 0")
 
 results = cursor.fetchall()
+if not results:
+    out_of_posts()
+    exit()
 result = random.choice(results)
 dont_post_counter = 0
 # if a post with any don't-post tags were picked, pick a new one
@@ -93,7 +127,7 @@ if result:
             conn.close()
         else:
             log.error(f"reblog failed with code {http_code}: {http_message}")
-            log.debug(f"post ID: {str(post_id)}", f"post reblog key: {str(post_reblog_key)}", f"post tags: {str(post_tags)}")
+            log.debug(f"post ID: {str(post_id)}\npost reblog key: {str(post_reblog_key)}\npost tags: {str(post_tags)}")
             # it failed, probably due to hitting the post limit. don't worry about it and don't update the database
     except Exception as e:
         log.error("something happened? here's the response:", str(response))
@@ -101,30 +135,3 @@ if result:
         pass
 else:
     out_of_posts()
-
-def out_of_posts():
-    log.warning("out of posts! please run the scraper again!")
-    with open("warnings.txt", "r", encoding="utf-8") as file:
-        warnings = file.readlines()
-    if "out of posts" in warnings:
-        pass
-    else:
-        with open("warnings.txt", "a", encoding="utf-8") as file:
-            file.write("out of posts\n")
-        # client.create_text(
-        #     "emoji-archive-bot", 
-        #     body="[automated] hey @goldstargloww i've run out of posts help me", 
-        #     tags=[
-        #         "don't worry i just need to run the scraper again and this is a reminder to make me do that",
-        #         "bot post",
-        #         "not an emoji"
-        #         ]
-        #     )
-        httpx.post(
-            webhook_url,
-            json={
-                "username": webhook_username,
-                "avatar_url": webhook_avatar_url,
-                "content": "OUT OF POSTS!!! HELP!!!"
-            }
-        )

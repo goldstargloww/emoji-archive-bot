@@ -1,10 +1,10 @@
-#!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
+#!/root/emoji-archive-bot/.venv/bin/python
 import sqlite3, re, os, datetime, sys
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 
-os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
+os.chdir("/root/emoji-archive-bot")
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 # os.makedirs("logs/util", exist_ok=True)

@@ -1,4 +1,4 @@
-#!/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot/.venv/bin/python
+#!/root/emoji-archive-bot/.venv/bin/python
 import sqlite3, random, os, git, datetime, logging, httpx, json
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # this file is run every 30 minutes using windows' Task Scheduler
 # you can do something similar on linux with cronjobs
 
-os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
+os.chdir("/root/emoji-archive-bot")
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 os.makedirs("logs/poster", exist_ok=True)
@@ -23,14 +23,14 @@ if not git_branch == "main":
     exit()
 else:
     log.debug("on main branch! continuing")
-    
+
 
 log.debug("loading environment variables...")
 load_dotenv()
 
 webhook_url = f"https://discord.com/api/webhooks/{os.getenv('webhook_id')}/{os.getenv('webhook_token')}?thread_id={os.getenv('webhook_thread_id')}"
 webhook_avatar_url = "https://64.media.tumblr.com/b8f595a3430b24734cc20d8ebd4d16dc/a3e8c1512c1f6774-0e/s999999999x999999999/5507618b6476183ad8fff79e4fae570acce7bcc6.png"
-webhook_username = "emoji archive bot"    
+webhook_username = "emoji archive bot"
 
 
 def out_of_posts():

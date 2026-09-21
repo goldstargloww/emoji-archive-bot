@@ -1,11 +1,11 @@
-#!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
+#!/root/emoji-archive-bot/.venv/bin/python
 import sqlite3, time, math, re, os, time, datetime, logging, sys
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
 from dotenv import load_dotenv
 from alive_progress import alive_bar # for progress bar in terminal
 
-os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
+os.chdir("/root/emoji-archive-bot")
 
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 os.makedirs("logs/scraper", exist_ok=True)

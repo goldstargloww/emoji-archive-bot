@@ -188,3 +188,5 @@ def last_scan():
     # client.create_text("emoji-archive-bot", state="draft", tags=response["posts"][0]["tags"], format="html", body=body)
     out = client.edit_post("emoji-archive-bot", state="published", type="text", tags=response["posts"][0]["tags"], format="html", body=body, id=772243895949099008)
     print(out)
+    
+add_to_bloglist_from_txt()

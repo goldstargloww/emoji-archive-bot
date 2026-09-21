@@ -1,0 +1,3 @@
+[tool.pyrefly]
+  python-interpreter = ".venv/bin/python"
+  site-package-path = ".venv/lib/python3.14/site-packages"

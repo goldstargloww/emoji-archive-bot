@@ -2,9 +2,7 @@
 import sqlite3, time, math, re, os, time, datetime, logging, sys
 from bs4 import BeautifulSoup
 import custom_pytumblr as pytumblr
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
-# pyrefly: ignore [missing-import]
 from alive_progress import alive_bar # for progress bar in terminal
 
 os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")
@@ -336,6 +334,7 @@ def get_posts_from_blog(
 
                             # check for readmore
                             if re.search(r"\[\[MORE]]", item["content_raw"]):
+                                post["tags"] += ["e:/has a readmore"]
                                 with open("warnings.txt", "a", encoding="utf-8") as file:
                                     # write to warnings file to check manually later
                                     file.write(f"read more: {blog_name}/{post['id']}\n")

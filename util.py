@@ -1,9 +1,7 @@
 #!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
 import sqlite3, re, os, datetime, sys
-# pyrefly: ignore [missing-import]
 from alive_progress import alive_bar
 import custom_pytumblr as pytumblr
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 os.chdir("/run/media/gold/My Book/dualdocuments/coding/emoji-archive-bot")

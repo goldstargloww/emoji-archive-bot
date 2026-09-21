@@ -1,8 +1,6 @@
 #!/run/media/gold/My\ Book/dualdocuments/coding/emoji-archive-bot/.venv/bin python
-# pyrefly: ignore [missing-import]
 import sqlite3, random, os, git, datetime, logging
 import custom_pytumblr as pytumblr
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 # this file is run every 30 minutes using windows' Task Scheduler
